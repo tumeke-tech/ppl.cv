@@ -4,31 +4,26 @@ if(PPLCV_USE_MSVC_STATIC_RUNTIME)
     hpcc_cuda_use_msvc_static_runtime()
 endif()
 
+# One gencode per GPU architecture the image is deployed on. A cubin only
+# loads on the architecture it was built for and later minor revisions of the
+# same major, so Ampere cubins do not run on Turing: without an explicit
+# sm_75 entry every CUDA call on a T4 fails with "no kernel image is
+# available for execution". Kept in step with TORCH_CUDA_ARCH_LIST in the
+# gpu-compute Dockerfiles so the image has a single supported-architecture
+# list. The trailing PTX entry lets a GPU newer than sm_89 JIT-compile
+# instead of hitting the same failure.
 set(_NVCC_FLAGS )
-#set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_35,code=sm_35")
-#set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_37,code=sm_37")
-#set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_50,code=sm_50")
-#set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_53,code=sm_53")
-#if(CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL "8")
-#    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60")
-#    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_61,code=sm_61")
-#    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_62,code=sm_62")
-#endif()
-#if(CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL "9")
-#    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_70,code=sm_70")
-#endif()
-#if(CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL "10")
-#    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_72,code=sm_72")
-#    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
-#endif()
 if (CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL "11")
+    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_61,code=sm_61")
+    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_70,code=sm_70")
+    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
     set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80")
-    if (CUDA_VERSION_MINOR VERSION_GREATER_EQUAL "1")
-        set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_86,code=sm_86")
-    endif ()
-    #if (CUDA_VERSION_MINOR VERSION_GREATER_EQUAL "4")
-    #    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_87,code=sm_87")
-    #endif ()
+    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_86,code=sm_86")
+endif ()
+# sm_89 (L4 / L40S) requires CUDA 11.8; this fork targets the CUDA 12 toolchain.
+if (CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL "12")
+    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_89,code=sm_89")
+    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_89,code=compute_89")
 endif ()
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${_NVCC_FLAGS}")
 
